@@ -27,6 +27,11 @@
 		// 	zIndex: 1
 		// }).addTo(map)
 
+		L.ogcMapsLayer('http://99.224.1.128:5000/collections/rivers', {
+			f: 'png',
+			zIndex: 4
+		}).addTo(map)
+
 		L.ogcMapsLayer('https://test.cubewerx.com/cubewerx/cubeserv/demo/ogcapi/Winnipeg_2019/collections/dtm_1m', {
 			// style: 'hillshade',
 			f: 'png',

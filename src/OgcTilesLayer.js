@@ -23,7 +23,6 @@ L.OgcTilesLayer = L.TileLayer.extend({
 				that._getTileBaseUrl()
 			}
     })
-
 	},
 	
 	onAdd: function (map) {
@@ -33,7 +32,7 @@ L.OgcTilesLayer = L.TileLayer.extend({
 
   _getTileBaseUrl: function () {
 		if (this.options.style === 'default') {
-			this._tileBaseUrl = this._findTilesUrlBaselinks(this.metadata.links)
+			this._tileBaseUrl = this._findTilesUrlBaseFromLinks(this.metadata.links)
 			this._setTileUrl()
 		} else {
 			var that = this
@@ -65,7 +64,6 @@ L.OgcTilesLayer = L.TileLayer.extend({
 		if (this._tileUrl === null) return ''
     const tileBounds = this._tileCoordsToBounds(coords)
     if (!this._checkIfTileOverlapsExtent(tileBounds)) return ''
-		// var tileUrl = this.options.style !=='default' ? this._url + '/styles/' + this.options.style  + '/map/tiles' : this._url + '/map/tiles'
 		return this._tileUrl + '/' + this._getZoomForUrl() + '/' + coords.y + '/' + coords.x + '.' + this.options.f
 	},
 
@@ -98,7 +96,7 @@ L.OgcTilesLayer = L.TileLayer.extend({
     return null
   },
 
-	_findTilesUrlBaselinks: function (links) {
+	_findTilesUrlBaseFromLinks: function (links) {
     for (var i = 0; i < links.length; i++) {
       var link = links[i]
 			if (link.rel.indexOf('tilesets-map') > -1) {
