@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>leaflet-ogc-layers</title>
+	<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+	<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+	<script type="text/javascript" src="../dist/OgcLayers.js"></script>
+</head>
+<body>
+	<div id="map" style="width: 100%; height: 400px;""></div>
+
+	<script>
+
+		var map = L.map('map', {
+			center: [49.8844, -97.14704],
+			zoom: 10
+		});
+
+		var CartoDB_Positron = L.tileLayer('http://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png', {
+			attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="http://cartodb.com/attributions">CartoDB</a>',
+			subdomains: 'abcd',
+			maxZoom: 19
+		}).addTo(map);
+
+		// L.ogcTilesLayer('https://maps.ecere.com/ogcapi/collections/blueMarble', {
+		// 	f: 'image/png',
+		// 	zIndex: 1
+		// }).addTo(map)
+
+		L.ogcMapsLayer('https://test.cubewerx.com/cubewerx/cubeserv/demo/ogcapi/Winnipeg_2019/collections/dtm_1m', {
+			// style: 'hillshade',
+			f: 'png',
+			zIndex: 2
+		}).addTo(map)
+
+		L.ogcTilesLayer('http://5.9.22.176:8080/ogcapi/collections/HRDEM-RedRiver:DTM:2m', {
+			f: 'png',
+			zIndex: 3
+		}).addTo(map)
+
+	</script>
+</body>
+</html>
