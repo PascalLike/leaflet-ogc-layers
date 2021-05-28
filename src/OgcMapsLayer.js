@@ -58,7 +58,7 @@ L.OgcMapsLayer = L.TileLayer.extend({
 		const tileBounds = this._tileCoordsToBounds(coords)
 		if (!this._checkIfTileOverlapsExtent(tileBounds)) return ''
 		const params = L.Util.getParamString(this.ogcMapsParams)
-		var tileUrl = this._tileUrl !== null ? this._tileUrl : this._url + '/map'
+		var tileUrl = this.options.style !=='default' ? this._url + '/styles/' + this.options.style  + '/map' : this._url + '/map'
  		return tileUrl + params + '&bbox=' + tileBounds.toBBoxString()
 	},
 
@@ -66,20 +66,8 @@ L.OgcMapsLayer = L.TileLayer.extend({
 		L.Util.extend(this.ogcMapsParams, params)
 		if (!noRedraw) this.redraw()
 		return this
-	},
-
-	_getStylesMetadata: function () {
-    const that = this
-    return new Promise(function (resolve) {
-      fetch(that._url + '/styles' + '?f=json')
-      .then(function (response) {
-        response.json()
-        .then(function (data) {
-          resolve(data)
-        })
-      })
-    })
 	}
+
 });
 
 

@@ -35,6 +35,16 @@ const ogcLayer = {
   _tileMatrixFields: ['tileMatrixSetDefinition', 'tileMatrixSetURI', 'wellKnownScaleSet'],
   _validWebMercatorHits: ['WebMercatorQuad', 'GoogleMapsCompatible'],
 
+  _cleanUrlOfParams: function (url) {
+    return url.split('?')[0]
+  },
+
+  _ensureAbsoluteUrl: function (url) {
+    if (url[0] !== '/') return url
+    var baseUrl = new URL(this._url)
+    return baseUrl.origin + url
+  },
+
   _findWebMercatorTilesetMatrix: function (tilesets) {
     for (var i = 0; i < tilesets.length; i++) {
       var tileset = tilesets[i];
@@ -45,11 +55,8 @@ const ogcLayer = {
           if (tileset[field] && tileset[field].indexOf(wm) > -1) {
             for (var iiii = 0; iiii < tileset.links.length; iiii++) {
               if (tileset.links[iiii].rel.indexOf('tileset') > -1) {
-
-                var url = tileset.links[iiii].href.split('?')[0]
-                if (url[0] !== '/') return url
-                var baseUrl = new URL(this._url)
-                return baseUrl.origin + url
+                var url = this._cleanUrlOfParams(tileset.links[iiii].href)
+                return this._ensureAbsoluteUrl(url)
               }
             }
           }

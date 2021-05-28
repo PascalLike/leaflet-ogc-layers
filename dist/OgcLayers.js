@@ -35,6 +35,16 @@ const ogcLayer = {
   _tileMatrixFields: ['tileMatrixSetDefinition', 'tileMatrixSetURI', 'wellKnownScaleSet'],
   _validWebMercatorHits: ['WebMercatorQuad', 'GoogleMapsCompatible'],
 
+  _cleanUrlOfParams: function (url) {
+    return url.split('?')[0]
+  },
+
+  _ensureAbsoluteUrl: function (url) {
+    if (url[0] !== '/') return url
+    var baseUrl = new URL(this._url)
+    return baseUrl.origin + url
+  },
+
   _findWebMercatorTilesetMatrix: function (tilesets) {
     for (var i = 0; i < tilesets.length; i++) {
       var tileset = tilesets[i];
@@ -45,11 +55,8 @@ const ogcLayer = {
           if (tileset[field] && tileset[field].indexOf(wm) > -1) {
             for (var iiii = 0; iiii < tileset.links.length; iiii++) {
               if (tileset.links[iiii].rel.indexOf('tileset') > -1) {
-
-                var url = tileset.links[iiii].href.split('?')[0]
-                if (url[0] !== '/') return url
-                var baseUrl = new URL(this._url)
-                return baseUrl.origin + url
+                var url = this._cleanUrlOfParams(tileset.links[iiii].href)
+                return this._ensureAbsoluteUrl(url)
               }
             }
           }
@@ -145,7 +152,7 @@ const ogcLayer = {
 		const tileBounds = this._tileCoordsToBounds(coords)
 		if (!this._checkIfTileOverlapsExtent(tileBounds)) return ''
 		const params = L.Util.getParamString(this.ogcMapsParams)
-		var tileUrl = this._tileUrl !== null ? this._tileUrl : this._url + '/map'
+		var tileUrl = this.options.style !=='default' ? this._url + '/styles/' + this.options.style  + '/map' : this._url + '/map'
  		return tileUrl + params + '&bbox=' + tileBounds.toBBoxString()
 	},
 
@@ -153,20 +160,8 @@ const ogcLayer = {
 		L.Util.extend(this.ogcMapsParams, params)
 		if (!noRedraw) this.redraw()
 		return this
-	},
-
-	_getStylesMetadata: function () {
-    const that = this
-    return new Promise(function (resolve) {
-      fetch(that._url + '/styles' + '?f=json')
-      .then(function (response) {
-        response.json()
-        .then(function (data) {
-          resolve(data)
-        })
-      })
-    })
 	}
+
 });
 
 
@@ -182,6 +177,8 @@ L.ogcMapsLayer = function ogcMapLayer(url, options) {
 
 	tilesMetadata: {},
 
+	_tileBaseUrl: null,
+
 	initialize: function (url, options) {
     var that = this
 		this._url = url;
@@ -191,18 +188,12 @@ L.ogcMapsLayer = function ogcMapLayer(url, options) {
 		this._getMetadata()
     .then(function (data) {
       that.metadata = data
-      if (that.metadata) that._setLayerBounds()
-    })
-
-		this._getTilesMetadata()
-		.then(function (data) {
-      that.tilesMetadata = data
-      if (that.tilesMetadata) {
-				that._tileUrl = that._findWebMercatorTilesetMatrix(that.tilesMetadata.tilesets)
-				that.redraw()
+      if (that.metadata) {
+				that._setLayerBounds()
+				that._getTileBaseUrl()
 			}
     })
-		
+
 	},
 	
 	onAdd: function (map) {
@@ -210,17 +201,48 @@ L.ogcMapsLayer = function ogcMapLayer(url, options) {
 		L.TileLayer.prototype.onAdd.call(this, map)
 	},
 
+  _getTileBaseUrl: function () {
+		if (this.options.style === 'default') {
+			this._tileBaseUrl = this._findTilesUrlBaselinks(this.metadata.links)
+			this._setTileUrl()
+		} else {
+			var that = this
+			this._getStylesMetadata()
+			.then(function (data) {
+				that.styleMetadata = data
+				if (that.styleMetadata) {
+					that.options.style = that.styleMetadata.defaultStyle ? that.styleMetadata.defaultStyle : that.styleMetadata.styles[0].id 
+					that._tileBaseUrl = that._findTilesUrlFromStyles(that.styleMetadata.styles)
+					that._setTileUrl()
+				}
+			})
+		}
+	},
+
+	_setTileUrl: function () {
+		var that = this
+		that._getStyledTileMetadata()
+		.then(function (data) {
+			that.tilesMetadata = data
+			if (that.tilesMetadata) {
+				that._tileUrl = that._findWebMercatorTilesetMatrix(that.tilesMetadata.tilesets)
+				that.redraw()
+			}
+		})
+	},
+
 	getTileUrl: function (coords) {
 		if (this._tileUrl === null) return ''
     const tileBounds = this._tileCoordsToBounds(coords)
     if (!this._checkIfTileOverlapsExtent(tileBounds)) return ''
-    return this._tileUrl + '/' + this._getZoomForUrl() + '/' + coords.y + '/' + coords.x + '.' + this.options.f
+		// var tileUrl = this.options.style !=='default' ? this._url + '/styles/' + this.options.style  + '/map/tiles' : this._url + '/map/tiles'
+		return this._tileUrl + '/' + this._getZoomForUrl() + '/' + coords.y + '/' + coords.x + '.' + this.options.f
 	},
 
-	_getTilesMetadata: function () {
+	_getStyledTileMetadata: function () {
     const that = this
     return new Promise(function (resolve) {
-      fetch(that._url + '/map/tiles' + '?f=json')
+      fetch(that._tileBaseUrl)
       .then(function (response) {
         response.json()
         .then(function (data) {
@@ -228,6 +250,33 @@ L.ogcMapsLayer = function ogcMapLayer(url, options) {
         })
       })
     })
+	},
+
+	_findTilesUrlFromStyles: function (styles) {
+    for (var i = 0; i < styles.length; i++) {
+      var style = styles[i]
+      if (style.id === this.options.style) {
+        for (var ii = 0; ii < style.links.length; ii++) {
+          var link = style.links[ii]
+          if (link.rel.indexOf('tilesets') > -1) {
+						var url = this._cleanUrlOfParams(link.href)
+						return this._ensureAbsoluteUrl(url)
+					}
+        }
+      }
+    }
+    return null
+  },
+
+	_findTilesUrlBaselinks: function (links) {
+    for (var i = 0; i < links.length; i++) {
+      var link = links[i]
+			if (link.rel.indexOf('tilesets-map') > -1) {
+				var url = this._cleanUrlOfParams(link.href)
+				return this._ensureAbsoluteUrl(url)
+			}
+    }
+    return null
 	}
 
 });
